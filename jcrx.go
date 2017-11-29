@@ -42,16 +42,108 @@ package main
 import (
 	"os"
 	"fmt"
+	"strings"
 	"trickyunits/mkl"
+	"trickyunits/jcr6/jcr6main"
+_	"trickyunits/jcr6/jcr6zlib"
 )
+
+type tsec struct{
+	run func() (bool,string)
+}
+type tdot struct{
+	run func(j jcr6main.TJCR6Dir) (bool,string)
+}
+
+var section =make(map[string]*tsec)//map[string] tsec
+var dirout = make(map[string]*tdot)
+
+func defit(){
+	// test
+	section["test"]=&tsec{}
+	section["test"].run = func() (bool,string){
+		//fmt.Println("TEST!")
+		return true,"TEST"
+	}
+	// dirout
+	section["dirout"]=&tsec{}
+	section["dirout"].run = func() (bool,string){
+		if len(os.Args)<4 {
+			return false,"Invalid dirout!"
+		}
+		if _,ok:=dirout[os.Args[3]]; !ok{
+			return false,"I don't know how to script out the directory in: "+os.Args[3]
+		}
+		j := jcr6main.Dir(os.Args[2])
+		if jcr6main.JCR6Error!="" {
+			return false,jcr6main.JCR6Error
+		}
+		rb,rs := dirout[os.Args[3]].run(j)
+		return rb,rs
+	}
+	
+	// dirout: Lua
+	dirout["lua"]=&tdot{}
+	dirout["lua"].run = func(j jcr6main.TJCR6Dir) (bool,string){
+		ret:="local ret={}\nlocal t={}\n\n"
+		//ret = ret + fmt.Sprintf("ret.fat = { size = %d, csize = %s, storage='%s' }\n",j.fatsize,j.fatcsize,j.fatstorage)
+		dl:=jcr6main.EntryList(j)
+		for i:=0;i<len(dl);i++{
+			e:=jcr6main.Entry(j,dl[i])
+			if jcr6main.JCR6Error!="" {
+				return false,jcr6main.JCR6Error
+			}
+			if dl[i]!=""{
+				ret = ret + fmt.Sprintf("\nt = {} ret['%s']=t -- Entry #%d\n",strings.ToUpper(dl[i]),i+1)
+				ret = ret + fmt.Sprintf("t.entry          = '%s'\n",dl[i])
+				ret = ret + fmt.Sprintf("t.mainfile       = '%s'\n",e.Mainfile)
+				ret = ret + fmt.Sprintf("t.offset         = %d\n",e.Offset)
+				ret = ret + fmt.Sprintf("t.size           = %d\n",e.Size)
+				ret = ret + fmt.Sprintf("t.compressedsize = %d\n",e.Compressedsize)
+				ret = ret + fmt.Sprintf("t.storage        = '%s'\n",e.Storage)
+				ret = ret + fmt.Sprintf("t.author         = '%s'\n",e.Author)
+				ret = ret + fmt.Sprintf("t.notes          = '%s'\n",e.Notes)
+				ret = ret +             "t.data           = {}\n"
+				for ks, vs := range e.Datastring {
+					ret = ret + fmt.Sprintf("\tt.data['%s'] = \"%s\"\n",ks,vs)
+				}
+				for ki, vi := range e.Dataint {
+					ret = ret + fmt.Sprintf("\tt.data['%s'] = %d\n",ki,vi)
+				}
+				for kb, vb := range e.Databool {
+					if vb {
+						ret = ret + fmt.Sprintf("\tt.data['%s'] = true\n",kb)
+					} else {
+						ret = ret + fmt.Sprintf("\tt.data['%s'] = false\n",kb)
+					}
+				}
+			}
+		}
+		return true,ret
+	}
+}
+
 
 func main(){
 mkl.Version("jcrx - jcrx.go","17.11.29")
 mkl.Lic    ("jcrx - jcrx.go","ZLib License")
+	defit()
 	if len(os.Args)<2 {
-			fmt.Println("OK")
-			fmt.Println(mkl.Newest())
-			fmt.Println("Built on sources:")
-			fmt.Println(mkl.ListAll())
+		fmt.Println("OK")
+		fmt.Println(mkl.Newest())
+		fmt.Println("Built on sources:")
+		fmt.Println(mkl.ListAll())
+	} else { 
+		if sec,ok:= section[os.Args[1]]; ok{
+			success,outdata:=sec.run()
+			if success{
+				fmt.Println("OK")
+			} else {
+				fmt.Println("ERROR!")
+			}
+			fmt.Println(outdata)
+		} else {
+			fmt.Printf("ERROR!\nI don't know what you mean by %s\n\nDid you spell it right! And please note that I only understand 'lower case' commands!\n",os.Args[1])
 		}
+	}
 }
