@@ -119,6 +119,7 @@ func defit(){
 				}
 			}
 		}
+		ret = ret + "\n\nreturn ret\n"
 		return true,ret
 	}
 }
