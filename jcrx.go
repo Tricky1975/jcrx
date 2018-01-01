@@ -1,7 +1,7 @@
 /*
   jcrx.go
   
-  version: 17.11.29
+  version: 17.12.28
   Copyright (C) 2017 Jeroen P. Broks
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -46,6 +46,9 @@ import (
 	"trickyunits/mkl"
 	"trickyunits/jcr6/jcr6main"
 _	"trickyunits/jcr6/jcr6zlib"
+_	"trickyunits/jcr6/jcr6flate"
+_	"trickyunits/jcr6/jcr6lzma"
+_	"trickyunits/jcr6/jcr6realdir"
 )
 
 type tsec struct{
@@ -122,11 +125,22 @@ func defit(){
 		ret = ret + "\n\nreturn ret\n"
 		return true,ret
 	}
+	
+	// typeout:
+	section["typeout"]=&tsec{}
+	section["typeout"].run = func() (bool,string) {
+		if len(os.Args)<4 { return false,"Invalid typeout" }
+		j:=jcr6main.Dir(os.Args[2])
+		if jcr6main.JCR6Error!="" { return false,jcr6main.JCR6Error }
+		b:=jcr6main.JCR_B(j,os.Args[3])
+		if jcr6main.JCR6Error!="" { return false,jcr6main.JCR6Error }
+		return true,string(b)
+	}
 }
 
 
 func main(){
-mkl.Version("jcrx - jcrx.go","17.11.29")
+mkl.Version("jcrx - jcrx.go","17.12.28")
 mkl.Lic    ("jcrx - jcrx.go","ZLib License")
 	defit()
 	if len(os.Args)<2 {
