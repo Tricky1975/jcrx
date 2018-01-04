@@ -43,6 +43,7 @@ import (
 	"os"
 	"fmt"
 	"strings"
+	"strconv"
 	"trickyunits/mkl"
 	"trickyunits/jcr6/jcr6main"
 _	"trickyunits/jcr6/jcr6zlib"
@@ -104,11 +105,11 @@ func defit(){
 				ret = ret + fmt.Sprintf("t.size           = %d\n",e.Size)
 				ret = ret + fmt.Sprintf("t.compressedsize = %d\n",e.Compressedsize)
 				ret = ret + fmt.Sprintf("t.storage        = '%s'\n",e.Storage)
-				ret = ret + fmt.Sprintf("t.author         = '%s'\n",e.Author)
-				ret = ret + fmt.Sprintf("t.notes          = '%s'\n",e.Notes)
+				ret = ret + fmt.Sprintf("t.author         = %s\n",strconv.QuoteToASCII(e.Author))
+				ret = ret + fmt.Sprintf("t.notes          = %s\n",strconv.QuoteToASCII(e.Notes))
 				ret = ret +             "t.data           = {}\n"
 				for ks, vs := range e.Datastring {
-					ret = ret + fmt.Sprintf("\tt.data['%s'] = \"%s\"\n",ks,vs)
+					ret = ret + fmt.Sprintf("\tt.data['%s'] = %s\n",ks,strconv.QuoteToASCII(vs))
 				}
 				for ki, vi := range e.Dataint {
 					ret = ret + fmt.Sprintf("\tt.data['%s'] = %d\n",ki,vi)
