@@ -1,8 +1,8 @@
 /*
   jcrx.go
   
-  version: 17.12.28
-  Copyright (C) 2017 Jeroen P. Broks
+  version: 18.01.14
+  Copyright (C) 2017, 2018 Jeroen P. Broks
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
   arising from the use of this software.
@@ -47,6 +47,7 @@ import (
 	"trickyunits/mkl"
 	"trickyunits/jcr6/jcr6main"
 _	"trickyunits/jcr6/jcr6zlib"
+_	"trickyunits/jcr6/jcr6lzw"
 _	"trickyunits/jcr6/jcr6flate"
 _	"trickyunits/jcr6/jcr6lzma"
 _	"trickyunits/jcr6/jcr6realdir"
@@ -141,7 +142,7 @@ func defit(){
 
 
 func main(){
-mkl.Version("jcrx - jcrx.go","17.12.28")
+mkl.Version("jcrx - jcrx.go","18.01.14")
 mkl.Lic    ("jcrx - jcrx.go","ZLib License")
 	defit()
 	if len(os.Args)<2 {
