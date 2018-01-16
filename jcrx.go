@@ -1,7 +1,7 @@
 /*
   jcrx.go
   
-  version: 18.01.14
+  version: 18.01.15
   Copyright (C) 2017, 2018 Jeroen P. Broks
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -45,6 +45,7 @@ import (
 	"strings"
 	"strconv"
 	"trickyunits/mkl"
+	"trickyunits/qff"
 	"trickyunits/jcr6/jcr6main"
 _	"trickyunits/jcr6/jcr6zlib"
 _	"trickyunits/jcr6/jcr6lzw"
@@ -138,11 +139,35 @@ func defit(){
 		if jcr6main.JCR6Error!="" { return false,jcr6main.JCR6Error }
 		return true,string(b)
 	}
+	
+	// transform:
+	section["transform"]=&tsec{} // transforms a directory into a JCR file and destroys the original directory if succesful!
+	section["transform"].run = func() (bool,string) {
+		if len(os.Args)<3 { return false,"Hey! What do you want to transform?" }
+		origineel:=os.Args[2]
+		if !qff.IsDir(origineel) { return false,"Original is not a directory, or it doesn't exist at all!" }
+		orij:=jcr6main.Dir(os.Args[2])
+		ret:=""
+		tarj:=jcr6main.JCR_Create(os.Args[2]+".jcr","BRUTE")
+		for ek,ev:=range orij.Entries {
+			ret+="Freezing: "+ek+" ... "
+			o,c,a:=tarj.AddFile(ev.Mainfile,ev.Entry,"BRUTE","jcrx user","created with jcrx. license set by app using this as dependency")
+			ret+=fmt.Sprintf("(%d => %d) %s\n",o,c,a)
+		}
+		tarj.Close()
+		destroy:=true
+		if len(os.Args)>3 { if os.Args[3]=="KEEPME" {destroy=false}}
+		if destroy {
+			ret+="\nDestroying original: "+origineel+"\n\n"
+			os.RemoveAll(origineel)
+		}
+		return true,ret
+	}
 }
 
 
 func main(){
-mkl.Version("jcrx - jcrx.go","18.01.14")
+mkl.Version("jcrx - jcrx.go","18.01.15")
 mkl.Lic    ("jcrx - jcrx.go","ZLib License")
 	defit()
 	if len(os.Args)<2 {
