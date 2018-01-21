@@ -1,7 +1,7 @@
 /*
   jcrx.go
   
-  version: 18.01.15
+  version: 18.01.21
   Copyright (C) 2017, 2018 Jeroen P. Broks
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -181,7 +181,7 @@ func defit(){
 
 
 func main(){
-mkl.Version("jcrx - jcrx.go","18.01.15")
+mkl.Version("jcrx - jcrx.go","18.01.21")
 mkl.Lic    ("jcrx - jcrx.go","ZLib License")
 	defit()
 	if len(os.Args)<2 {
