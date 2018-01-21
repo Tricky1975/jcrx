@@ -163,6 +163,20 @@ func defit(){
 		}
 		return true,ret
 	}
+	
+	// extract:
+	section["extract"] = &tsec{}
+	section["extract"].run = func() (bool,string) {
+		if len(os.Args)<5 { return false,"Too little parameters for extration" }
+		jcrfil:=os.Args[2]
+		source:=os.Args[3]
+		target:=os.Args[4]
+		jcr   :=jcr6main.Dir(jcrfil);			if jcr6main.JCR6Error!="" { return false,jcr6main.JCR6Error }
+		b     :=jcr6main.JCR_B(jcr,source);		if jcr6main.JCR6Error!="" { return false,jcr6main.JCR6Error }
+		bt,err:=os.Create(target);				if err!=nil { return false,err.Error() } ;defer bt.Close()
+		bt.Write(b)	;							if err!=nil { return false,err.Error() }
+		return true,"Nobody expects the Spanish Inquisition!"
+	}
 }
 
 
