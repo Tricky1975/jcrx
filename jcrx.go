@@ -1,7 +1,7 @@
 /*
   jcrx.go
   
-  version: 18.01.21
+  version: 18.02.18
   Copyright (C) 2017, 2018 Jeroen P. Broks
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -46,6 +46,7 @@ import (
 	"strconv"
 	"trickyunits/mkl"
 	"trickyunits/qff"
+//	"trickyunits/qstr"
 	"trickyunits/jcr6/jcr6main"
 _	"trickyunits/jcr6/jcr6zlib"
 _	"trickyunits/jcr6/jcr6lzw"
@@ -63,6 +64,7 @@ type tdot struct{
 
 var section =make(map[string]*tsec)//map[string] tsec
 var dirout = make(map[string]*tdot)
+var osargs = [] string{}
 
 func defit(){
 	// test
@@ -74,17 +76,17 @@ func defit(){
 	// dirout
 	section["dirout"]=&tsec{}
 	section["dirout"].run = func() (bool,string){
-		if len(os.Args)<4 {
+		if len(osargs)<4 {
 			return false,"Invalid dirout!"
 		}
-		if _,ok:=dirout[os.Args[3]]; !ok{
-			return false,"I don't know how to script out the directory in: "+os.Args[3]
+		if _,ok:=dirout[osargs[3]]; !ok{
+			return false,"I don't know how to script out the directory in: "+osargs[3]
 		}
-		j := jcr6main.Dir(os.Args[2])
+		j := jcr6main.Dir(osargs[2])
 		if jcr6main.JCR6Error!="" {
 			return false,jcr6main.JCR6Error
 		}
-		rb,rs := dirout[os.Args[3]].run(j)
+		rb,rs := dirout[osargs[3]].run(j)
 		return rb,rs
 	}
 	
@@ -102,7 +104,7 @@ func defit(){
 			if dl[i]!=""{
 				ret = ret + fmt.Sprintf("\nt = {} ret['%s']=t -- Entry #%d\n",strings.ToUpper(dl[i]),i+1)
 				ret = ret + fmt.Sprintf("t.entry          = '%s'\n",dl[i])
-				ret = ret + fmt.Sprintf("t.mainfile       = '%s'\n",e.Mainfile)
+				ret = ret + fmt.Sprintf("t.mainfile       = '%s'\n",strings.Replace(e.Mainfile,"\\","/",-1))
 				ret = ret + fmt.Sprintf("t.offset         = %d\n",e.Offset)
 				ret = ret + fmt.Sprintf("t.size           = %d\n",e.Size)
 				ret = ret + fmt.Sprintf("t.compressedsize = %d\n",e.Compressedsize)
@@ -132,10 +134,10 @@ func defit(){
 	// typeout:
 	section["typeout"]=&tsec{}
 	section["typeout"].run = func() (bool,string) {
-		if len(os.Args)<4 { return false,"Invalid typeout" }
-		j:=jcr6main.Dir(os.Args[2])
+		if len(osargs)<4 { return false,"Invalid typeout" }
+		j:=jcr6main.Dir(osargs[2])
 		if jcr6main.JCR6Error!="" { return false,jcr6main.JCR6Error }
-		b:=jcr6main.JCR_B(j,os.Args[3])
+		b:=jcr6main.JCR_B(j,osargs[3])
 		if jcr6main.JCR6Error!="" { return false,jcr6main.JCR6Error }
 		return true,string(b)
 	}
@@ -143,12 +145,12 @@ func defit(){
 	// transform:
 	section["transform"]=&tsec{} // transforms a directory into a JCR file and destroys the original directory if succesful!
 	section["transform"].run = func() (bool,string) {
-		if len(os.Args)<3 { return false,"Hey! What do you want to transform?" }
-		origineel:=os.Args[2]
+		if len(osargs)<3 { return false,"Hey! What do you want to transform?" }
+		origineel:=osargs[2]
 		if !qff.IsDir(origineel) { return false,"Original is not a directory, or it doesn't exist at all!" }
-		orij:=jcr6main.Dir(os.Args[2])
+		orij:=jcr6main.Dir(osargs[2])
 		ret:=""
-		tarj:=jcr6main.JCR_Create(os.Args[2]+".jcr","BRUTE")
+		tarj:=jcr6main.JCR_Create(osargs[2]+".jcr","BRUTE")
 		for ek,ev:=range orij.Entries {
 			ret+="Freezing: "+ek+" ... "
 			o,c,a:=tarj.AddFile(ev.Mainfile,ev.Entry,"BRUTE","jcrx user","created with jcrx. license set by app using this as dependency")
@@ -156,7 +158,7 @@ func defit(){
 		}
 		tarj.Close()
 		destroy:=true
-		if len(os.Args)>3 { if os.Args[3]=="KEEPME" {destroy=false}}
+		if len(osargs)>3 { if osargs[3]=="KEEPME" {destroy=false}}
 		if destroy {
 			ret+="\nDestroying original: "+origineel+"\n\n"
 			os.RemoveAll(origineel)
@@ -167,10 +169,10 @@ func defit(){
 	// extract:
 	section["extract"] = &tsec{}
 	section["extract"].run = func() (bool,string) {
-		if len(os.Args)<5 { return false,"Too little parameters for extration" }
-		jcrfil:=os.Args[2]
-		source:=os.Args[3]
-		target:=os.Args[4]
+		if len(osargs)<5 { return false,"Too little parameters for extraction" }
+		jcrfil:=osargs[2]
+		source:=osargs[3]
+		target:=osargs[4]
 		jcr   :=jcr6main.Dir(jcrfil);			if jcr6main.JCR6Error!="" { return false,jcr6main.JCR6Error }
 		b     :=jcr6main.JCR_B(jcr,source);		if jcr6main.JCR6Error!="" { return false,jcr6main.JCR6Error }
 		bt,err:=os.Create(target);				if err!=nil { return false,err.Error() } ;defer bt.Close()
@@ -181,16 +183,17 @@ func defit(){
 
 
 func main(){
-mkl.Version("jcrx - jcrx.go","18.01.21")
+mkl.Version("jcrx - jcrx.go","18.02.18")
 mkl.Lic    ("jcrx - jcrx.go","ZLib License")
+	for _,arg := range os.Args{ osargs = append(osargs,strings.Replace(arg,"DIE_VIEZE_VUILE_FUCK_WINDOWS_HEEFT_EEN_SPATIEBALK_NODIG"," ",-1)) }
 	defit()
-	if len(os.Args)<2 {
+	if len(osargs)<2 {
 		fmt.Println("OK")
 		fmt.Println(mkl.Newest())
 		fmt.Println("Built on sources:")
 		fmt.Println(mkl.ListAll())
 	} else { 
-		if sec,ok:= section[os.Args[1]]; ok{
+		if sec,ok:= section[osargs[1]]; ok{
 			success,outdata:=sec.run()
 			if success{
 				fmt.Println("OK")
@@ -199,7 +202,7 @@ mkl.Lic    ("jcrx - jcrx.go","ZLib License")
 			}
 			fmt.Println(outdata)
 		} else {
-			fmt.Printf("ERROR!\nI don't know what you mean by %s\n\nDid you spell it right! And please note that I only understand 'lower case' commands!\n",os.Args[1])
+			fmt.Printf("ERROR!\nI don't know what you mean by %s\n\nDid you spell it right! And please note that I only understand 'lower case' commands!\n",osargs[1])
 		}
 	}
 }
