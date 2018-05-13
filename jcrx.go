@@ -1,7 +1,7 @@
 /*
   jcrx.go
   
-  version: 18.02.18
+  version: 18.05.13
   Copyright (C) 2017, 2018 Jeroen P. Broks
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -102,6 +102,7 @@ func defit(){
 				return false,jcr6main.JCR6Error
 			}
 			if dl[i]!=""{
+				dl[i] = strings.Replace(dl[i],"'","\\'",-1)
 				ret = ret + fmt.Sprintf("\nt = {} ret['%s']=t -- Entry #%d\n",strings.ToUpper(dl[i]),i+1)
 				ret = ret + fmt.Sprintf("t.entry          = '%s'\n",dl[i])
 				ret = ret + fmt.Sprintf("t.mainfile       = '%s'\n",strings.Replace(e.Mainfile,"\\","/",-1))
@@ -179,11 +180,40 @@ func defit(){
 		bt.Write(b)	;							if err!=nil { return false,err.Error() }
 		return true,"Nobody expects the Spanish Inquisition!"
 	}
+	
+	section["getblock"] = &tsec{}
+	section["getblock"].run = func() (bool,string) {
+		// parsing parameters
+		if len(osargs)<7 { return false,"Too little parameters for getblock" }
+		offset, err2 := strconv.ParseInt(osargs[2], 10, 64); if err2!=nil {return false,"Invalid offset" } // 2 = offset
+		csize , err3 := strconv.ParseInt(osargs[3], 10, 64); if err3!=nil {return false,"Invalid offset" } // 3 = compressed size
+		 size , err2 := strconv.ParseInt(osargs[4], 10, 64); if err2!=nil {return false,"Invalid offset" } // 4 = true size
+		storage      := osargs[5]                                                                          // 5 = storage method
+		mainfile     := osargs[6]                                                                          // 6 = main file
+		// declare bank
+		pb := make([]byte,csize); 
+		// read the compressed bank
+		bt,err := os.Open(mainfile)
+		defer bt.Close()
+		if err!=nil {
+			return false,fmt.Sprintf("Error while opening resource file: %s",mainfile)
+		}
+		bt.Seek(int64(offset),0)
+		bt.Read(pb)
+		// unpack compressed bank
+		var ub []byte
+		if stdrv,ok:=jcr6main.JCR6StorageDrivers[storage];ok{
+			ub = stdrv.Unpack(pb,int(size))
+		} else {
+			return false,fmt.Sprintf("Storage algorith %s doesn't exist",storage)
+		}
+		return true,string(ub)
+	}
 }
 
 
 func main(){
-mkl.Version("jcrx - jcrx.go","18.02.18")
+mkl.Version("jcrx - jcrx.go","18.05.13")
 mkl.Lic    ("jcrx - jcrx.go","ZLib License")
 	for _,arg := range os.Args{ osargs = append(osargs,strings.Replace(arg,"DIE_VIEZE_VUILE_FUCK_WINDOWS_HEEFT_EEN_SPATIEBALK_NODIG"," ",-1)) }
 	defit()
