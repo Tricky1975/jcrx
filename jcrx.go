@@ -1,7 +1,7 @@
 /*
   jcrx.go
   
-  version: 18.05.13
+  version: 18.05.15
   Copyright (C) 2017, 2018 Jeroen P. Broks
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -131,6 +131,46 @@ func defit(){
 		ret = ret + "\n\nreturn ret\n"
 		return true,ret
 	}
+	dirout["python"]=&tdot{}
+	dirout["python"].run = func(j jcr6main.TJCR6Dir) (bool,string){
+		ret:="def jdir():\n\tret={}\n\tt={}\n\n"
+		//ret = ret + fmt.Sprintf("ret.fat = { size = %d, csize = %s, storage='%s' }\n",j.fatsize,j.fatcsize,j.fatstorage)
+		dl:=jcr6main.EntryList(j)
+		for i:=0;i<len(dl);i++{
+			e:=jcr6main.Entry(j,dl[i])
+			if jcr6main.JCR6Error!="" {
+				return false,jcr6main.JCR6Error
+			}
+			if dl[i]!=""{
+				dl[i] = strings.Replace(dl[i],"'","\\'",-1)
+				ret = ret + fmt.Sprintf("\n\tt = {} ; ret['%s']=t # Entry #%d\n",strings.ToUpper(dl[i]),i+1)
+				ret = ret + fmt.Sprintf("\tt['entry']          = '%s'\n",dl[i])
+				ret = ret + fmt.Sprintf("\tt['mainfile']       = '%s'\n",strings.Replace(e.Mainfile,"\\","/",-1))
+				ret = ret + fmt.Sprintf("\tt['offset']         = %d\n",e.Offset)
+				ret = ret + fmt.Sprintf("\tt['size']           = %d\n",e.Size)
+				ret = ret + fmt.Sprintf("\tt['compressedsize'] = %d\n",e.Compressedsize)
+				ret = ret + fmt.Sprintf("\tt['storage']        = '%s'\n",e.Storage)
+				ret = ret + fmt.Sprintf("\tt['author']         = %s\n",strconv.QuoteToASCII(e.Author))
+				ret = ret + fmt.Sprintf("\tt['notes']          = %s\n",strconv.QuoteToASCII(e.Notes))
+				ret = ret +             "\tt['data']           = {}\n"
+				for ks, vs := range e.Datastring {
+					ret = ret + fmt.Sprintf("\tt['data']['%s'] = %s\n",ks,strconv.QuoteToASCII(vs))
+				}
+				for ki, vi := range e.Dataint {
+					ret = ret + fmt.Sprintf("\tt['data']['%s'] = %d\n",ki,vi)
+				}
+				for kb, vb := range e.Databool {
+					if vb {
+						ret = ret + fmt.Sprintf("\tt['data']['%s'] = true\n",kb)
+					} else {
+						ret = ret + fmt.Sprintf("\tt['data']['%s'] = false\n",kb)
+					}
+				}
+			}
+		}
+		ret = ret + "\treturn ret\n\n# Once read run the function jdir inside and the data should be returned."
+		return true,ret
+	}
 	
 	// typeout:
 	section["typeout"]=&tsec{}
@@ -213,7 +253,7 @@ func defit(){
 
 
 func main(){
-mkl.Version("jcrx - jcrx.go","18.05.13")
+mkl.Version("jcrx - jcrx.go","18.05.15")
 mkl.Lic    ("jcrx - jcrx.go","ZLib License")
 	for _,arg := range os.Args{ osargs = append(osargs,strings.Replace(arg,"DIE_VIEZE_VUILE_FUCK_WINDOWS_HEEFT_EEN_SPATIEBALK_NODIG"," ",-1)) }
 	defit()
