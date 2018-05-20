@@ -44,8 +44,11 @@ import (
 	"fmt"
 	"strings"
 	"strconv"
+	"path/filepath"
 	"trickyunits/mkl"
 	"trickyunits/qff"
+	"trickyunits/qstr"
+	"trickyunits/dirry"
 //	"trickyunits/qstr"
 	"trickyunits/jcr6/jcr6main"
 _	"trickyunits/jcr6/jcr6zlib"
@@ -65,6 +68,39 @@ type tdot struct{
 var section =make(map[string]*tsec)//map[string] tsec
 var dirout = make(map[string]*tdot)
 var osargs = [] string{}
+
+func getenvs() (*map[string] string,string){
+	ret:=map[string] string {}
+	fl:=dirry.Dirry("$AppSupport$/JCRX/ENV")
+	if !qff.Exists(fl) { return &ret,"new!" }
+	for lnum,line := range( qff.GetLines(fl) ) {
+		tl:=qstr.MyTrim(line)
+		if tl!="" && !qstr.Prefixed(tl,"#") {
+			p:=strings.IndexByte(tl, ' ')
+			if p<0 { return nil,fmt.Sprintf("Illegal set up line #%d",lnum) }
+			key:=strings.ToUpper(tl[:p])
+			value:=tl[p+1:]
+			ret[key]=value
+		}
+	}
+	return &ret,"ok!"
+
+}
+
+func saveenvs(vars *map[string] string) (bool,string){
+	o:="# File generated!\n\n"
+	for k,v := range *vars {
+		p:=strings.IndexByte(k,' ')
+		if p>=0 { return false,"Variable names may NOT have spaces" }
+		o += fmt.Sprintf("%s %s\n",k,v)
+	}
+	dr:=dirry.Dirry("$AppSupport$/JCRX")
+	if !qff.IsDir(dr) { os.Mkdir(dr,0777) }
+	fl:=dirry.Dirry("$AppSupport$/JCRX/ENV")
+	e:=qff.WriteStringToFile(fl,o) 
+	if e!=nil { return false,e.Error() }
+	return true,"ok!"
+}
 
 func defit(){
 	// test
@@ -248,6 +284,74 @@ func defit(){
 			return false,fmt.Sprintf("Storage algorith %s doesn't exist",storage)
 		}
 		return true,string(ub)
+	}
+	
+	section["glob"] = &tsec{}
+	section["glob"].run = func() (bool,string) {
+		ret:=""
+		if len(osargs)<3 { return false,"Too little paramters for glob" }
+		for i:=2;i<len(osargs);i++{
+			g,e:=filepath.Glob(osargs[i])
+			if e!=nil { return false,e.Error() }
+			for _,gf := range g {
+				if len(ret)>0 { ret += "\n" }
+				ret += gf
+				//fmt.Println("debug: "+gf)
+			}
+		}
+		return true,ret
+	}
+	
+	section["set"] = &tsec{}
+	section["set"].run = func() (bool,string) {
+		if len(osargs)<4 { return false,"Too little paramters for set" }
+		vars,err:=getenvs()
+		if vars==nil { return false,err }
+		(*vars)[osargs[2]]=osargs[3]
+		ok:=false
+		ok,err=saveenvs(vars)
+		if !ok { return false,err }
+		return true,""
+	}
+	
+	section["get"] = &tsec{}
+	section["get"].run = func() (bool,string) {
+		if len(osargs)<3 { return false,"Too little paramters for set" }
+		vars,err:=getenvs()
+		if vars==nil { return false,err }
+		// Go lies!
+		vars2:=*vars
+		value,ok:=vars2[strings.ToUpper(osargs[2])] 
+		// I know the routine above is a lie, but as Go is lying about the direct call (bug?), I must waste the ram by copying the data into a non-pointer or the code will simply NOT compile.
+		if ok {
+			return true,value
+		} else {
+			return false,"There is no variable named `"+osargs[2]+"`"
+		}
+	}
+	
+	section["type"] = &tsec{}
+	section["type"].run = func() (bool,string) {
+		/*
+		 * copied from: https://stackoverflow.com/questions/8824571/golang-determining-whether-file-points-to-file-or-directory
+		 * adepted for jcrx by Jeroen P. Broks
+		 */
+		if len(osargs)<3 { return false,"Too little paramters for type" }
+		name := osargs[2]
+		fi, err := os.Stat(name)
+		if err != nil {
+			//fmt.Println(err)
+			return false,err.Error()
+		}
+		switch mode := fi.Mode(); {
+			case mode.IsDir():
+				// do directory stuff
+				return true,"directory"
+			case mode.IsRegular():
+				// do file stuff
+				return true,"file"
+		}
+		return false,"Detection failure"
 	}
 }
 
